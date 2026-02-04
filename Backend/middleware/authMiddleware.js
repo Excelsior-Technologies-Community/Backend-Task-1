@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
+import User from "../models/user.js";
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
   let token;
 
   if (
@@ -9,10 +10,20 @@ const protect = (req, res, next) => {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      jwt.verify(token, process.env.JWT_SECRET);
+
+      // decode token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // attach user to request
+      req.user = await User.findById(decoded.id).select("-password");
+
+      if (!req.user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
       next();
     } catch (error) {
-      return res.status(401).json({ message: "Not authorized" });
+      return res.status(401).json({ message: "Not authorized, token invalid" });
     }
   } else {
     return res.status(401).json({ message: "No token provided" });
