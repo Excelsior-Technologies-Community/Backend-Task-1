@@ -10,18 +10,20 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Emails and passwords required" });
-    }
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "All fields required" });
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    const exists = await User.findOne({ email });
+    if (exists)
       return res.status(400).json({ message: "User already exists" });
-    }
+
+    const lastUser = await User.findOne().sort({ userId: -1 });
+    const nextUserId = lastUser ? lastUser.userId + 1 : 1;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await User.create({
+    const user = await User.create({
+      userId: nextUserId,
       name,
       email,
       password: hashedPassword,
@@ -29,10 +31,14 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully",
+      user: {
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+      },
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -59,13 +65,13 @@ router.post("/login", async (req, res) => {
       success: true,
       token,
       user: {
-        id: user._id,
+        userId: user.userId,
         name: user.name,
         email: user.email,
       },
     });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
